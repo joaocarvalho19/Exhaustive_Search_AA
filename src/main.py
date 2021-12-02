@@ -4,23 +4,42 @@ import time
 import random
 import networkx as nx
 import sys
-import getopt
+import math
 
 def getRandomVer(n):
-    return [random.randint(0, 9) for i in range(n)]
+    return [(random.randint(1, 9),random.randint(1, 9)) for i in range(n)]
 
-def getRandomEdges(n, ver):
-    pass
+# Create nodes not being coincident nor too close
+def getRandomVer_v2(n):
+    final_v = []
+    while len(final_v) < n:
+        new_x, new_y = (random.randint(1, 9), random.randint(1, 9))
+        if final_v:
+            for x,y in final_v:
+                distance = math.sqrt((x - new_x)**2 + (y - new_y)**2)
+                if distance > 0.1:
+                    final_v.append((new_x, new_y))
+        else:
+            final_v.append((new_x, new_y))
+    return final_v
 
-def main(num_vertices, search_type):
+
+def main(num_vertices):
+    begin = time.time()
+    nodes = getRandomVer(num_vertices)
+    
     graph = Graph(num_vertices)
     G = nx.Graph()
-    G.add_nodes_from([x for x in range(0, num_vertices)])
+
+    for i in range(len(nodes)):
+        G.add_node(i,pos=(nodes[i][0],nodes[i][1]))
+
+    pos=nx.get_node_attributes(G,'pos')
 
     chosen_edges = {}
-    begin = time.time()
+    # Generate random edges
     for i in range(0,num_vertices):
-            n_iters = random.choice([x for x in range(1,num_vertices)])
+            n_iters = random.choice([x for x in range(1,int(num_vertices/2))])
             used_vertices = []
             for iteration in range(0, n_iters):
                 j = []
@@ -33,9 +52,8 @@ def main(num_vertices, search_type):
                 if j:
                     j_choice = random.choice(j)
                 
-                #print("Creating edge: G[%d][%d]" %  (i,j))
                 if j_choice:
-                    graph.add_edge(i,j_choice)
+                    graph.add_edge(i,j_choice)  # Append to Matrix
                     G.add_edge(i,j_choice)
                     if j_choice not in chosen_edges.keys():
                         chosen_edges[j_choice] = set([i])
@@ -44,49 +62,43 @@ def main(num_vertices, search_type):
 
                     used_vertices.append(j_choice)
     
-    """graph.add_edge(0,1)
-    graph.add_edge(1,2)
-    graph.add_edge(2,3)
-    graph.add_edge(3,4)
-    graph.add_edge(3,1)
-    G.add_edge(0,1)
-    G.add_edge(1,2)
-    G.add_edge(2,3)
-    G.add_edge(3,4)
-    G.add_edge(3,1)"""
+
+    creation_time = time.time() - begin
+    print("Graph created with {} vertices and {} edges! Time elapsed: {} (ms)".format(num_vertices, graph.getNumEdges(), round(creation_time*1000, 4)))
             
-    graph.printMatriz()
+    #graph.printMatriz()
+    graph.writeMatrix()
     graph.getEdgesAdjacency()
-    nx.draw(G, with_labels=True)
+    nx.draw(G, pos, with_labels=True)
     
-    #all_sol = graph.getAllSolutions()
-    if search_type == "greedy":
-        result = graph.findGreedySolution()
-        print("Minimum edge dominating set ({} algorithm): {}".format(search_type, result))
-    else:
-        result = graph.findExhaustiveSolution(graph.getAllSolutions())
-        print("Minimum edge dominating set ({} algorithm): {}".format(search_type, result))
-    
-    print("Time: {}".format(time.time() - begin))
+    # Exhaustive Search
+    begin = time.time()
+    result = graph.findExhaustiveSolution()
+    print("Minimum edge dominating set ({} algorithm): {}".format("exhaustive", result))
+    print("Time elapsed: {} (ms) | Num basic ops {}".format( round((time.time() - begin)*1000, 4), graph.getBasicOps()))
+    graph.cleanBasicOps()   
+
+    # Greedy Search
+    begin = time.time()
+    result = graph.findGreedySolution()
+    print("Minimum edge dominating set ({} algorithm): {}".format("greedy", result))
+    print("Time elapsed: {} (ms) | Num basic ops {}".format( round((time.time() - begin)*1000, 4), graph.getBasicOps()))
+      
     
     plt.show()
 
 if __name__ == "__main__":
     num_vertices = None
-    search_type = None      #  greedy | exhaustive
 
     try:
         num_vertices = int(sys.argv[1])
-        search_type = sys.argv[2]
     except Exception as err:
-        print("Usage: python3 main.py <generate random graph with N vertices (int)> <algorithm type (str: 'greedy' | str: 'exhaustive')>")
+        print("Usage: python3 main.py <generate random graph with N vertices (int)>")
 
     if not isinstance(num_vertices, int):
         print("Vertices not int!")
-        print("Usage: python3 main.py <generate random graph with N vertices (int)> <algorithm type (str: 'greedy' | str: 'exhaustive')>")
+        print("Usage: python3 main.py <generate random graph with N vertices (int)>")
         sys.exit(2)
     
-    if num_vertices and (search_type == 'greedy' or search_type == 'exhaustive'):
-        main(num_vertices, search_type)
     else:
-        print("Usage: python3 main.py <generate random graph with N vertices (int)> <algorithm type (str: 'greedy' | str: 'exhaustive')>")
+        main(num_vertices)
